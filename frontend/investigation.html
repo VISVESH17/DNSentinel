@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNSentinel — Investigation</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="navbar">
+  <div class="brand"><span class="dot"></span> DNSentinel</div>
+  <nav>
+    <a href="index.html">Analyzer</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="alerts.html">Alerts</a>
+    <a href="domains.html">Domains</a>
+    <a href="investigation.html" class="active">Investigation</a>
+  </nav>
+</div>
+
+<div class="container">
+  <h1>Investigation</h1>
+  <p class="subtitle">Passive PCAP/Zeek analysis and STIX/TAXII threat feed sync. Requires analyst or admin login.</p>
+
+  <div id="loginPanel" class="panel">
+    <h2>Sign in</h2>
+    <div class="check-form">
+      <input type="text" id="username" placeholder="username (try: analyst)" autocomplete="off" />
+      <input type="password" id="password" placeholder="password (try: analyst123)" autocomplete="off" />
+      <button id="loginBtn" style="background:var(--accent);color:#05161a;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;">Sign in</button>
+    </div>
+    <div id="loginStatus" style="font-size:0.85rem;color:var(--muted);"></div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-top:10px;">
+      Demo accounts: <code>admin/admin123</code> · <code>analyst/analyst123</code> · <code>viewer/viewer123</code>
+    </div>
+  </div>
+
+  <div id="authedPanels" style="display:none;">
+    <div class="panel">
+      <h2>Signed in as <span id="whoami" style="color:var(--accent);"></span></h2>
+      <button id="logoutBtn" style="background:transparent;border:1px solid var(--panel-border);color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer;">Sign out</button>
+    </div>
+
+    <div class="panel">
+      <h2>STIX/TAXII feed sync</h2>
+      <p style="color:var(--muted);font-size:0.88rem;">Ingests data/stix_sample_bundle.json (a real STIX 2.x bundle) into threat indicators.</p>
+      <button id="stixSyncBtn" style="background:var(--accent);color:#05161a;border:none;padding:9px 18px;border-radius:8px;font-weight:700;cursor:pointer;">Sync STIX bundle</button>
+      <div id="stixResult" style="margin-top:12px;font-size:0.88rem;"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Passive PCAP / Zeek analysis</h2>
+      <p style="color:var(--muted);font-size:0.88rem;">
+        Upload a Zeek <code>dns.log</code> file (produced by <code>zeek -r capture.pcap</code>).
+        A sample with a simulated DNS-tunnelling attack is included at <code>data/sample_zeek_dns.log</code>.
+      </p>
+      <input type="file" id="pcapFile" accept=".log,.txt" style="margin-bottom:12px;color:var(--text);" />
+      <br />
+      <button id="uploadBtn" style="background:var(--accent);color:#05161a;border:none;padding:9px 18px;border-radius:8px;font-weight:700;cursor:pointer;">Analyze</button>
+      <div id="pcapResult" style="margin-top:16px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = "http://localhost:8000";
+let token = null;
+let role = null;
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  const statusEl = document.getElementById("loginStatus");
+  statusEl.textContent = "Signing in...";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+    });
+    if (!res.ok) {
+      statusEl.textContent = "Invalid credentials.";
+      return;
+    }
+    const data = await res.json();
+    token = data.access_token;
+    role = data.role;
+    document.getElementById("loginPanel").style.display = "none";
+    document.getElementById("authedPanels").style.display = "block";
+    document.getElementById("whoami").textContent = `${username} (${role})`;
+  } catch (err) {
+    statusEl.textContent = `Could not reach the API at ${API_BASE}.`;
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  token = null;
+  role = null;
+  document.getElementById("loginPanel").style.display = "block";
+  document.getElementById("authedPanels").style.display = "none";
+});
+
+document.getElementById("stixSyncBtn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("stixResult");
+  resultEl.textContent = "Syncing...";
+  try {
+    const res = await fetch(`${API_BASE}/api/threat/feeds/sync-stix`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<span style="color:var(--block)">${data.detail}</span>`;
+      return;
+    }
+    resultEl.innerHTML = `<span style="color:var(--safe)">Ingested ${data.ingested_indicators} indicators from bundle ${data.bundle_id}</span>`;
+  } catch (err) {
+    resultEl.innerHTML = `<span style="color:var(--block)">Request failed.</span>`;
+  }
+});
+
+document.getElementById("uploadBtn").addEventListener("click", async () => {
+  const fileInput = document.getElementById("pcapFile");
+  const resultEl = document.getElementById("pcapResult");
+
+  if (!fileInput.files.length) {
+    resultEl.innerHTML = `<span style="color:var(--monitor)">Choose a .log file first (or use data/sample_zeek_dns.log).</span>`;
+    return;
+  }
+
+  resultEl.textContent = "Analyzing...";
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/pcap/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<span style="color:var(--block)">${data.detail}</span>`;
+      return;
+    }
+
+    const suspected = data.results.filter(r => r.is_tunnel_suspected);
+    resultEl.innerHTML = `
+      <div class="panel" style="margin-bottom:0;">
+        <div><strong>${data.total_dns_records}</strong> DNS records &middot; <strong>${data.sessions_analyzed}</strong> sessions analyzed</div>
+        <div style="margin-top:6px;color:${suspected.length ? 'var(--block)' : 'var(--safe)'};font-weight:700;">
+          ${suspected.length} tunnel-suspected session(s)
+        </div>
+        ${suspected.map(s => `
+          <div style="margin-top:12px;padding:10px;border:1px solid var(--panel-border);border-radius:8px;">
+            <strong>${s.client_ip}</strong> → ${s.base_domain}
+            <div style="font-size:0.85rem;color:var(--muted);">Anomaly probability: ${s.anomaly_probability}</div>
+            <ul class="reasons">${s.rule_flags.map(f => `<li>${f}</li>`).join("")}</ul>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  } catch (err) {
+    resultEl.innerHTML = `<span style="color:var(--block)">Upload failed.</span>`;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNSentinel — Domains</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="navbar">
+  <div class="brand"><span class="dot"></span> DNSentinel</div>
+  <nav>
+    <a href="index.html">Analyzer</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="alerts.html">Alerts</a>
+    <a href="domains.html" class="active">Domains</a>
+    <a href="investigation.html">Investigation</a>
+  </nav>
+</div>
+
+<div class="container">
+  <h1>Threat Indicators</h1>
+  <p class="subtitle">Domains currently loaded from local threat-intelligence feeds (CSV; swap for STIX/TAXII in production).</p>
+
+  <div class="panel">
+    <button id="syncBtn" style="background:var(--accent);color:#05161a;border:none;padding:9px 18px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:16px;">
+      Sync feeds now
+    </button>
+    <table>
+      <thead>
+        <tr><th>Indicator</th><th>Type</th><th>Source</th><th>Confidence</th><th>Severity</th><th>Last seen</th></tr>
+      </thead>
+      <tbody id="indicatorsBody"><tr><td colspan="6" class="empty-state">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API_BASE = "http://localhost:8000";
+
+async function loadIndicators() {
+  const tbody = document.getElementById("indicatorsBody");
+  try {
+    const res = await fetch(`${API_BASE}/api/threat/indicators?limit=200`);
+    const rows = await res.json();
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No indicators synced yet. Click "Sync feeds now".</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.indicator}</td>
+        <td>${r.type}</td>
+        <td>${r.source}</td>
+        <td>${r.confidence}</td>
+        <td>${r.severity}</td>
+        <td>${new Date(r.last_seen).toLocaleString()}</td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Could not reach the API at ${API_BASE}.</td></tr>`;
+  }
+}
+
+document.getElementById("syncBtn").addEventListener("click", async () => {
+  await fetch(`${API_BASE}/api/threat/feeds/sync`, { method: "POST" });
+  loadIndicators();
+});
+
+document.addEventListener("DOMContentLoaded", loadIndicators);
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+domain,confidence,severity,source
+xj29akd9-login.com,85,high,local_ml_flagged
+free-movie-download.xyz,80,medium,local_ml_flagged
+secure-paypal-login-verify.xyz,94,critical,local_ml_flagged
+update-your-account-now.top,82,high,local_ml_flagged
+qw8z1x9v7k2.info,96,critical,dga_pattern
+kf83jd0alz19.biz,91,critical,dga_pattern

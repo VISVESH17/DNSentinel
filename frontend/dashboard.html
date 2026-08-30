@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNSentinel — Dashboard</title>
+<link rel="stylesheet" href="css/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="brand"><span class="dot"></span> DNSentinel</div>
+  <nav>
+    <a href="index.html">Analyzer</a>
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="alerts.html">Alerts</a>
+    <a href="domains.html">Domains</a>
+    <a href="investigation.html">Investigation</a>
+  </nav>
+</div>
+
+<div class="container">
+  <h1>Security Dashboard</h1>
+  <p class="subtitle">Live view of DNS query volume, blocks and threat indicators. Auto-refreshes every 10s.</p>
+
+  <div id="apiWarning" class="panel" style="display:none; border-color:var(--block); color:var(--block);">
+    Could not reach the API at <code>http://localhost:8000</code>. Start the backend
+    (<code>uvicorn backend.main:app --reload</code>) and refresh this page.
+  </div>
+
+  <div class="grid">
+    <div class="card"><div class="label">DNS Requests</div><div class="value" id="stat-total">–</div></div>
+    <div class="card block"><div class="label">Blocked</div><div class="value" id="stat-blocked">–</div></div>
+    <div class="card alert"><div class="label">Alerted</div><div class="value" id="stat-alerted">–</div></div>
+    <div class="card monitor"><div class="label">Monitored</div><div class="value" id="stat-monitored">–</div></div>
+    <div class="card safe"><div class="label">Allowed</div><div class="value" id="stat-allowed">–</div></div>
+    <div class="card"><div class="label">Threat Indicators</div><div class="value" id="stat-indicators">–</div></div>
+    <div class="card"><div class="label">Avg Latency</div><div class="value" id="stat-latency">–</div></div>
+    <div class="card"><div class="label">Open Alerts</div><div class="value" id="stat-open-alerts">–</div></div>
+  </div>
+
+  <div class="grid" style="grid-template-columns: 2fr 1fr;">
+    <div class="panel">
+      <h2>Requests over time (24h)</h2>
+      <div id="timelineEmpty" class="empty-state" style="display:none;">No queries logged yet in the last 24 hours.</div>
+      <canvas id="timelineChart"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Decision breakdown</h2>
+      <canvas id="actionDonut"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Top blocked domains</h2>
+    <table>
+      <thead><tr><th>Domain</th><th>Block count</th></tr></thead>
+      <tbody id="topDomainsBody"><tr><td colspan="2" class="empty-state">Loading…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Recent DNS queries</h2>
+    <table>
+      <thead><tr><th>Time</th><th>Domain</th><th>Client IP</th><th>Action</th><th>Risk score</th></tr></thead>
+      <tbody id="recentQueriesBody"><tr><td colspan="5" class="empty-state">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="js/charts.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

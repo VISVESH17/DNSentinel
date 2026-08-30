@@ -1,0 +1,9 @@
+domain,confidence,severity,source
+malware-drop-93827.xyz,95,critical,OpenPhish-sim
+c2-panel-relay.top,98,critical,AbuseCH-sim
+phishing-login-verify-secure.click,92,high,PhishTank-sim
+fake-bank-login-alert.work,90,high,PhishTank-sim
+spam-blast-network.gq,70,medium,Spamhaus-sim
+botnet-cnc-node7.tk,97,critical,AbuseCH-sim
+credential-harvest-portal.cf,88,high,OpenPhish-sim
+trojan-payload-host.zip,93,critical,AbuseCH-sim

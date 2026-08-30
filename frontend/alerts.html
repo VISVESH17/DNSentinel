@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNSentinel — Alerts</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div class="navbar">
+  <div class="brand"><span class="dot"></span> DNSentinel</div>
+  <nav>
+    <a href="index.html">Analyzer</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="alerts.html" class="active">Alerts</a>
+    <a href="domains.html">Domains</a>
+    <a href="investigation.html">Investigation</a>
+  </nav>
+</div>
+
+<div class="container">
+  <h1>Alerts</h1>
+  <p class="subtitle">Domains that crossed the ALERT or BLOCK risk threshold. Sign in to confirm or dismiss (false-positive) alerts — this is the analyst feedback loop that would seed future model retraining.</p>
+
+  <div id="loginPanel" class="panel">
+    <div class="check-form">
+      <input type="text" id="username" placeholder="username (try: analyst)" autocomplete="off" />
+      <input type="password" id="password" placeholder="password (try: analyst123)" autocomplete="off" />
+      <button id="loginBtn" style="background:var(--accent);color:#05161a;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;">Sign in</button>
+    </div>
+    <div id="loginStatus" style="font-size:0.85rem;color:var(--muted);"></div>
+  </div>
+
+  <div id="signedInBar" class="panel" style="display:none;">
+    Signed in as <strong id="whoami" style="color:var(--accent);"></strong>
+    &nbsp;·&nbsp;
+    <a href="#" id="logoutLink" style="color:var(--muted);">sign out</a>
+  </div>
+
+  <div class="panel">
+    <table>
+      <thead>
+        <tr><th>Domain</th><th>Client IP</th><th>Severity</th><th>Type</th><th>Status</th><th>Created</th><th>Feedback</th></tr>
+      </thead>
+      <tbody id="alertsBody"><tr><td colspan="7" class="empty-state">Sign in to load alerts.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API_BASE = "http://localhost:8000";
+let token = null;
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  const statusEl = document.getElementById("loginStatus");
+  statusEl.textContent = "Signing in...";
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`,
+    });
+    if (!res.ok) { statusEl.textContent = "Invalid credentials."; return; }
+    const data = await res.json();
+    token = data.access_token;
+    document.getElementById("loginPanel").style.display = "none";
+    document.getElementById("signedInBar").style.display = "block";
+    document.getElementById("whoami").textContent = `${username} (${data.role})`;
+    loadAlerts();
+  } catch (err) {
+    statusEl.textContent = `Could not reach the API at ${API_BASE}.`;
+  }
+});
+
+document.getElementById("logoutLink").addEventListener("click", (e) => {
+  e.preventDefault();
+  token = null;
+  document.getElementById("loginPanel").style.display = "block";
+  document.getElementById("signedInBar").style.display = "none";
+  document.getElementById("alertsBody").innerHTML = `<tr><td colspan="7" class="empty-state">Sign in to load alerts.</td></tr>`;
+});
+
+async function setAlertStatus(alertId, status) {
+  await fetch(`${API_BASE}/api/alerts/${alertId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ status }),
+  });
+  loadAlerts();
+}
+
+async function loadAlerts() {
+  const tbody = document.getElementById("alertsBody");
+  try {
+    const res = await fetch(`${API_BASE}/api/alerts?limit=100`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status === 401) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Session expired — please sign in again.</td></tr>`;
+      return;
+    }
+    const rows = await res.json();
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No alerts yet. Check a suspicious domain on the Analyzer page.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.domain}</td>
+        <td>${r.client_ip}</td>
+        <td>${r.severity}</td>
+        <td>${r.alert_type}</td>
+        <td>${r.status}</td>
+        <td>${new Date(r.created_at).toLocaleString()}</td>
+        <td>
+          ${r.status === "open" || r.status === "investigating" ? `
+            <button onclick="setAlertStatus(${r.id}, 'resolved')" style="background:var(--safe);border:none;color:#05161a;padding:4px 10px;border-radius:6px;font-size:0.78rem;cursor:pointer;margin-right:4px;">Confirm</button>
+            <button onclick="setAlertStatus(${r.id}, 'false_positive')" style="background:transparent;border:1px solid var(--panel-border);color:var(--muted);padding:4px 10px;border-radius:6px;font-size:0.78rem;cursor:pointer;">False positive</button>
+          ` : `<span style="color:var(--muted);font-size:0.8rem;">—</span>`}
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Could not reach the API at ${API_BASE}.</td></tr>`;
+  }
+}
+</script>
+</body>
+</html>
