@@ -3,58 +3,197 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>DNSentinel — Domain Analyzer</title>
+<title>DNSentinel — AI-Powered DNS Security Gateway</title>
 <link rel="stylesheet" href="css/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 </head>
 <body>
 
 <div class="navbar">
   <div class="brand"><span class="dot"></span> DNSentinel</div>
   <nav>
-    <a href="index.html" class="active">Analyzer</a>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="alerts.html">Alerts</a>
-    <a href="domains.html">Domains</a>
-    <a href="investigation.html">Investigation</a>
+    <a href="#analyzer" class="tab-link active" data-tab="analyzer">Analyzer</a>
+    <a href="#dashboard" class="tab-link" data-tab="dashboard">Dashboard</a>
+    <a href="#alerts" class="tab-link" data-tab="alerts">Alerts</a>
+    <a href="#domains" class="tab-link" data-tab="domains">Domains</a>
+    <a href="#investigation" class="tab-link" data-tab="investigation">Investigation</a>
   </nav>
+  <div id="navAuthStatus" style="font-size:0.85rem;color:var(--muted);">Not signed in</div>
 </div>
 
 <div class="container">
-  <h1>Check a domain</h1>
-  <p class="subtitle">
-    SIH260003 &middot; AI-Powered DNS Threat Intelligence &amp; Security Gateway.
-    Every request runs through threat-intelligence matching, DGA/ML scoring and the risk engine.
-  </p>
 
-  <div class="panel">
-    <form id="checkForm" class="check-form">
-      <input type="text" id="domainInput" placeholder="e.g. malware-drop-93827.xyz" autocomplete="off" />
-      <button type="submit">Check Domain</button>
-    </form>
+  <!-- ===================== ANALYZER TAB ===================== -->
+  <section id="tab-analyzer" class="tab-view">
+    <h1>Check a domain</h1>
+    <p class="subtitle">
+      SIH260003 &middot; AI-Powered DNS Threat Intelligence &amp; Security Gateway.
+      Every request runs through threat-intelligence matching, DGA/ML scoring and the risk engine.
+    </p>
 
-    <div style="margin-bottom:16px; font-size:0.85rem; color:var(--muted);">
-      Try:
-      <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">google.com</span>
-      <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">malware-drop-93827.xyz</span>
-      <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">xj7z9qmw2plk4.info</span>
-      <span class="sample-domain" style="cursor:pointer;color:var(--accent);">secure-paypal-login-verify.xyz</span>
+    <div class="panel">
+      <form id="checkForm" class="check-form">
+        <input type="text" id="domainInput" placeholder="e.g. malware-drop-93827.xyz" autocomplete="off" />
+        <button type="submit">Check Domain</button>
+      </form>
+
+      <div style="margin-bottom:16px; font-size:0.85rem; color:var(--muted);">
+        Try:
+        <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">google.com</span>
+        <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">malware-drop-93827.xyz</span>
+        <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">xj7z9qmw2plk4.info</span>
+        <span class="sample-domain" style="cursor:pointer;color:var(--accent);">secure-paypal-login-verify.xyz</span>
+      </div>
+
+      <div id="resultBox" class="result-box"></div>
     </div>
 
-    <div id="resultBox" class="result-box"></div>
-  </div>
+    <div class="panel">
+      <h2>How a decision is made</h2>
+      <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">
+        1. The domain is normalized (TLD, subdomain depth, entropy).<br />
+        2. It's checked against synced threat-intelligence indicators (<code>+60</code> max).<br />
+        3. A local ML model scores DGA/algorithmic-domain likelihood (<code>+20</code> max).<br />
+        4. Lexical entropy anomalies and behavioural tunnelling signals add further weight (<code>+10</code> / <code>+15</code>).<br />
+        5. The combined 0–100 score maps to <strong>ALLOW / MONITOR / ALERT / BLOCK</strong>.
+      </p>
+    </div>
+  </section>
 
-  <div class="panel">
-    <h2>How a decision is made</h2>
-    <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">
-      1. The domain is normalized (TLD, subdomain depth, entropy).<br />
-      2. It's checked against synced threat-intelligence indicators (<code>+60</code> max).<br />
-      3. A local ML model scores DGA/algorithmic-domain likelihood (<code>+20</code> max).<br />
-      4. Lexical entropy anomalies and behavioural tunnelling signals add further weight (<code>+10</code> / <code>+15</code>).<br />
-      5. The combined 0–100 score maps to <strong>ALLOW / MONITOR / ALERT / BLOCK</strong>.
-    </p>
+  <!-- ===================== DASHBOARD TAB ===================== -->
+  <section id="tab-dashboard" class="tab-view" style="display:none;">
+    <h1>Security Dashboard</h1>
+    <p class="subtitle">Live view of DNS query volume, blocks and threat indicators. Auto-refreshes every 10s while this tab is open.</p>
+
+    <div id="dashApiWarning" class="panel" style="display:none; border-color:var(--block); color:var(--block);">
+      Could not reach the API at <code>http://localhost:8000</code>. Start the backend
+      (<code>uvicorn backend.main:app --reload</code>) and try again.
+    </div>
+
+    <div class="grid">
+      <div class="card"><div class="label">DNS Requests</div><div class="value" id="stat-total">–</div></div>
+      <div class="card block"><div class="label">Blocked</div><div class="value" id="stat-blocked">–</div></div>
+      <div class="card alert"><div class="label">Alerted</div><div class="value" id="stat-alerted">–</div></div>
+      <div class="card monitor"><div class="label">Monitored</div><div class="value" id="stat-monitored">–</div></div>
+      <div class="card safe"><div class="label">Allowed</div><div class="value" id="stat-allowed">–</div></div>
+      <div class="card"><div class="label">Threat Indicators</div><div class="value" id="stat-indicators">–</div></div>
+      <div class="card"><div class="label">Avg Latency</div><div class="value" id="stat-latency">–</div></div>
+      <div class="card"><div class="label">Open Alerts</div><div class="value" id="stat-open-alerts">–</div></div>
+    </div>
+
+    <div class="grid" style="grid-template-columns: 2fr 1fr;">
+      <div class="panel">
+        <h2>Requests over time (24h)</h2>
+        <div id="timelineEmpty" class="empty-state" style="display:none;">No queries logged yet in the last 24 hours.</div>
+        <canvas id="timelineChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>Decision breakdown</h2>
+        <canvas id="actionDonut"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Top blocked domains</h2>
+      <table>
+        <thead><tr><th>Domain</th><th>Block count</th></tr></thead>
+        <tbody id="topDomainsBody"><tr><td colspan="2" class="empty-state">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h2>Recent DNS queries</h2>
+      <table>
+        <thead><tr><th>Time</th><th>Domain</th><th>Client IP</th><th>Action</th><th>Risk score</th></tr></thead>
+        <tbody id="recentQueriesBody"><tr><td colspan="5" class="empty-state">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== ALERTS TAB ===================== -->
+  <section id="tab-alerts" class="tab-view" style="display:none;">
+    <h1>Alerts</h1>
+    <p class="subtitle">Domains that crossed the ALERT or BLOCK risk threshold. Sign in (top of page) to confirm or dismiss alerts.</p>
+
+    <div class="panel">
+      <table>
+        <thead>
+          <tr><th>Domain</th><th>Client IP</th><th>Severity</th><th>Type</th><th>Status</th><th>Created</th><th>Feedback</th></tr>
+        </thead>
+        <tbody id="alertsBody"><tr><td colspan="7" class="empty-state">Sign in above to load alerts.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== DOMAINS TAB ===================== -->
+  <section id="tab-domains" class="tab-view" style="display:none;">
+    <h1>Threat Indicators</h1>
+    <p class="subtitle">Domains currently loaded from local threat-intelligence feeds (CSV + STIX; swap for live STIX/TAXII in production).</p>
+
+    <div class="panel">
+      <button id="syncBtn" style="background:var(--accent);color:#05161a;border:none;padding:9px 18px;border-radius:8px;font-weight:700;cursor:pointer;margin-bottom:16px;">
+        Sync CSV feeds now
+      </button>
+      <table>
+        <thead>
+          <tr><th>Indicator</th><th>Type</th><th>Source</th><th>Confidence</th><th>Severity</th><th>Last seen</th></tr>
+        </thead>
+        <tbody id="indicatorsBody"><tr><td colspan="6" class="empty-state">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== INVESTIGATION TAB ===================== -->
+  <section id="tab-investigation" class="tab-view" style="display:none;">
+    <h1>Investigation</h1>
+    <p class="subtitle">Passive PCAP/Zeek analysis and STIX/TAXII threat feed sync. Requires analyst or admin login (top of page).</p>
+
+    <div id="investSignedOutMsg" class="panel">
+      <p style="color:var(--muted);">Sign in using the box at the top of the page to use STIX sync and PCAP upload.</p>
+    </div>
+
+    <div id="investAuthedPanels" style="display:none;">
+      <div class="panel">
+        <h2>STIX/TAXII feed sync</h2>
+        <p style="color:var(--muted);font-size:0.88rem;">Ingests data/stix_sample_bundle.json (a real STIX 2.x bundle) into threat indicators.</p>
+        <button id="stixSyncBtn" style="background:var(--accent);color:#05161a;border:none;padding:9px 18px;border-radius:8px;font-weight:700;cursor:pointer;">Sync STIX bundle</button>
+        <div id="stixResult" style="margin-top:12px;font-size:0.88rem;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Passive PCAP / Zeek analysis</h2>
+        <p style="color:var(--muted);font-size:0.88rem;">
+          Upload a Zeek <code>dns.log</code> file (produced by <code>zeek -r capture.pcap</code>).
+          A sample with a simulated DNS-tunnelling attack is included at <code>data/sample_zeek_dns.log</code>.
+        </p>
+        <input type="file" id="pcapFile" accept=".log,.txt" style="margin-bottom:12px;color:var(--text);" />
+        <br />
+        <button id="uploadBtn" style="background:var(--accent);color:#05161a;border:none;padding:9px 18px;border-radius:8px;font-weight:700;cursor:pointer;">Analyze</button>
+        <div id="pcapResult" style="margin-top:16px;"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ===================== SHARED LOGIN MODAL ===================== -->
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center;">
+  <div class="panel" style="max-width:360px;width:90%;">
+    <h2>Sign in</h2>
+    <p style="color:var(--muted);font-size:0.85rem;">Needed for Alerts feedback and Investigation tools.</p>
+    <input type="text" id="loginUsername" placeholder="username (try: analyst)" autocomplete="off" style="width:100%;margin-bottom:10px;background:#0d1420;border:1px solid var(--panel-border);color:var(--text);padding:10px 14px;border-radius:8px;" />
+    <input type="password" id="loginPassword" placeholder="password (try: analyst123)" autocomplete="off" style="width:100%;margin-bottom:10px;background:#0d1420;border:1px solid var(--panel-border);color:var(--text);padding:10px 14px;border-radius:8px;" />
+    <div id="loginModalStatus" style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button id="loginModalSubmit" style="flex:1;background:var(--accent);color:#05161a;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer;">Sign in</button>
+      <button id="loginModalCancel" style="background:transparent;border:1px solid var(--panel-border);color:var(--muted);padding:10px 16px;border-radius:8px;cursor:pointer;">Cancel</button>
+    </div>
+    <div style="font-size:0.78rem;color:var(--muted);margin-top:10px;">
+      Demo accounts: <code>admin/admin123</code> · <code>analyst/analyst123</code> · <code>viewer/viewer123</code>
+    </div>
   </div>
 </div>
 
-<script src="js/analyzer.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

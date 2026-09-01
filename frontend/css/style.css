@@ -50,16 +50,43 @@ body {
   box-shadow: 0 0 8px var(--safe);
 }
 
+.navbar nav {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+}
+
 .navbar nav a {
   color: var(--muted);
   text-decoration: none;
+  padding: 6px 4px;
+  border-bottom: 2px solid transparent;
   margin-left: 22px;
   font-size: 0.92rem;
   transition: color 0.15s;
 }
 
-.navbar nav a:hover, .navbar nav a.active {
+.navbar nav a:hover {
   color: var(--text);
+}
+
+.navbar nav a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tab-view {
+  animation: fadeIn 0.15s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .navbar { flex-wrap: wrap; gap: 10px; }
+  .navbar nav { order: 3; width: 100%; overflow-x: auto; }
 }
 
 .container {

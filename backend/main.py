@@ -4,11 +4,14 @@ DNSentinel -- FastAPI application entry point.
 Run with:
     uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
-Then open frontend/index.html in a browser (it calls this API at
-http://localhost:8000), or serve /frontend as static files -- see README.md.
+Then just open http://localhost:8000/ -- it redirects straight into the
+single-page frontend (frontend/index.html), which has all views
+(Analyzer, Dashboard, Alerts, Domains, Investigation) behind one URL
+with client-side tab navigation. No more separate page URLs to remember.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import os
 
@@ -52,12 +55,13 @@ def on_startup():
 
 @app.get("/")
 def root():
-    return {
-        "service": settings.app_name,
-        "status": "running",
-        "docs": "/docs",
-        "dashboard": "/app/dashboard.html",
-    }
+    """Redirect straight into the single-page app -- one URL for everything."""
+    return RedirectResponse(url="/app/index.html")
+
+
+@app.get("/api")
+def api_info():
+    return {"service": settings.app_name, "status": "running", "docs": "/docs"}
 
 
 @app.get("/health")

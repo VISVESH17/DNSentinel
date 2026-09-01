@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNSentinel — Domain Analyzer</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<div class="navbar">
+  <div class="brand"><span class="dot"></span> DNSentinel</div>
+  <nav>
+    <a href="index.html" class="active">Analyzer</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="alerts.html">Alerts</a>
+    <a href="domains.html">Domains</a>
+    <a href="investigation.html">Investigation</a>
+  </nav>
+</div>
+
+<div class="container">
+  <h1>Check a domain</h1>
+  <p class="subtitle">
+    SIH260003 &middot; AI-Powered DNS Threat Intelligence &amp; Security Gateway.
+    Every request runs through threat-intelligence matching, DGA/ML scoring and the risk engine.
+  </p>
+
+  <div class="panel">
+    <form id="checkForm" class="check-form">
+      <input type="text" id="domainInput" placeholder="e.g. malware-drop-93827.xyz" autocomplete="off" />
+      <button type="submit">Check Domain</button>
+    </form>
+
+    <div style="margin-bottom:16px; font-size:0.85rem; color:var(--muted);">
+      Try:
+      <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">google.com</span>
+      <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">malware-drop-93827.xyz</span>
+      <span class="sample-domain" style="cursor:pointer;color:var(--accent);margin-right:10px;">xj7z9qmw2plk4.info</span>
+      <span class="sample-domain" style="cursor:pointer;color:var(--accent);">secure-paypal-login-verify.xyz</span>
+    </div>
+
+    <div id="resultBox" class="result-box"></div>
+  </div>
+
+  <div class="panel">
+    <h2>How a decision is made</h2>
+    <p style="color:var(--muted); font-size:0.9rem; line-height:1.6;">
+      1. The domain is normalized (TLD, subdomain depth, entropy).<br />
+      2. It's checked against synced threat-intelligence indicators (<code>+60</code> max).<br />
+      3. A local ML model scores DGA/algorithmic-domain likelihood (<code>+20</code> max).<br />
+      4. Lexical entropy anomalies and behavioural tunnelling signals add further weight (<code>+10</code> / <code>+15</code>).<br />
+      5. The combined 0–100 score maps to <strong>ALLOW / MONITOR / ALERT / BLOCK</strong>.
+    </p>
+  </div>
+</div>
+
+<script src="js/analyzer.js"></script>
+</body>
+</html>

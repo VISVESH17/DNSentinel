@@ -8,12 +8,13 @@ minutes; rehearse the timing.
 2. `python scripts/train_model.py` (trains the DGA classifier)
 3. `uvicorn backend.main:app --reload` (starts the API on :8000)
 4. `python scripts/seed_database.py` (populates realistic demo traffic)
-5. Open `frontend/dashboard.html` and `frontend/index.html` in two tabs
+5. Open `http://localhost:8000/` in one browser tab (it redirects into
+   the single-page app — all views live behind tabs on that one page)
 
 ## Script
 
 **1. Start with the threat, not the dashboard.**
-Open `index.html`. Say: "Every DNS request in a network passes through
+You're on the **Analyzer** tab. Say: "Every DNS request in a network passes through
 here before resolution." Type a normal domain (`google.com`) — show it
 resolves instantly, ALLOW, risk score 0.
 
@@ -28,12 +29,13 @@ probability and entropy signal driving the score — "this was never in
 a threat feed; our local model caught it from its structure alone."
 
 **4. Show the dashboard.**
-Switch to `dashboard.html`. Point out: total queries, block count,
+Click the **Dashboard** tab (no page reload — it's the same URL, same
+login session). Point out: total queries, block count,
 the requests-over-time chart, and the top-blocked-domains table
 populated by `scripts/seed_database.py`.
 
 **5. Show the alerts page.**
-Switch to `alerts.html`. Show that every ALERT/BLOCK decision is
+Click the **Alerts** tab. Show that every ALERT/BLOCK decision is
 logged with a timestamp, client IP and severity — the beginning of an
 investigation workflow.
 

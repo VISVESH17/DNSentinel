@@ -52,17 +52,22 @@ uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 python scripts/seed_database.py
 ```
 
-Then open any of these directly in a browser (no server needed for the
-frontend itself — it's static HTML that calls the API at `localhost:8000`):
+Then just open **one URL**:
 
-- `frontend/index.html` — check a domain live
-- `frontend/dashboard.html` — SOC-style overview with charts
-- `frontend/alerts.html` — flagged domains
-- `frontend/domains.html` — synced threat indicators
+```
+http://localhost:8000/
+```
 
-Or visit `http://localhost:8000/app/index.html` once the API is running
-(FastAPI serves the frontend as static files too), and
-`http://localhost:8000/docs` for interactive Swagger API docs.
+This redirects straight into the single-page app (`frontend/index.html`) —
+Analyzer, Dashboard, Alerts, Domains and Investigation are all behind one
+URL, switched via client-side tabs with no page reloads. Sign-in (top
+right) is shared across every tab.
+
+`http://localhost:8000/docs` has the interactive Swagger API docs.
+
+> The old multi-page frontend (separate `dashboard.html`, `alerts.html`,
+> etc.) is kept for reference under `frontend/_legacy/` but isn't linked
+> anywhere — the single-page app in `frontend/index.html` is the one to use.
 
 ## Running tests
 
@@ -91,8 +96,10 @@ Try the tunnelling detector immediately:
 ```bash
 python -m backend.detection.train_tunnel_model   # fits the IsolationForest baseline (already included)
 ```
-Then open `frontend/investigation.html`, sign in as `analyst/analyst123`,
-and upload `data/sample_zeek_dns.log` — it correctly flags the one
+Then open the single-page app (`http://localhost:8000/` or
+`http://localhost:8000/app/index.html`), click **Sign in** (top right)
+with `analyst/analyst123`, switch to the **Investigation** tab, and
+upload `data/sample_zeek_dns.log` — it correctly flags the one
 simulated attack session out of 68 total, with zero false positives.
 
 ## How a decision is made

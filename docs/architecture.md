@@ -122,5 +122,5 @@ items (DoH/DoT, rate limiting, ClickHouse at scale, etc).
 | DGA Detection | `backend/ml/feature_extractor.py`, `train.py`, `predict.py` |
 | Risk Engine | `backend/core/risk_engine.py` |
 | Policy Engine | Encoded inside `risk_engine.py::_classify` |
-| SOC Dashboard | `frontend/dashboard.html`, `backend/api/dashboard_routes.py` |
-| Investigation & Feedback | `frontend/alerts.html` (evidence shown via `reasons`) |
+| SOC Dashboard | `frontend/index.html` (Dashboard tab), `backend/api/dashboard_routes.py` |
+| Investigation & Feedback | `frontend/index.html` (Alerts/Investigation tabs), `frontend/js/app.js` (evidence shown via `reasons`) |
