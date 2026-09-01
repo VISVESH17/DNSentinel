@@ -170,17 +170,59 @@ function actionBadge(action) {
 }
 
 async function refreshDashboard() {
-  try {
-    const stats = await fetchJSON("/api/stats");
-    document.getElementById("stat-total").textContent = stats.total_queries;
-    document.getElementById("stat-blocked").textContent = stats.blocked;
-    document.getElementById("stat-alerted").textContent = stats.alerted;
-    document.getElementById("stat-monitored").textContent = stats.monitored;
-    document.getElementById("stat-allowed").textContent = stats.allowed;
-    document.getElementById("stat-indicators").textContent = stats.threat_indicators;
-    document.getElementById("stat-latency").textContent = `${stats.avg_latency_ms} ms`;
-    document.getElementById("stat-open-alerts").textContent = stats.open_alerts;
+  // Data fetching and chart rendering are deliberately separated: a
+  // problem drawing a chart (e.g. Chart.js blocked by a browser
+  // extension) must never be mistaken for the API being unreachable.
+  let stats, timeline, recent, topDomains;
 
+  try {
+    stats = await fetchJSON("/api/stats");
+    timeline = await fetchJSON("/api/stats/timeline?hours=24");
+    recent = await fetchJSON("/api/dns/history?limit=25");
+    topDomains = await fetchJSON("/api/stats/top-domains?limit=8");
+    document.getElementById("dashApiWarning").style.display = "none";
+  } catch (err) {
+    document.getElementById("dashApiWarning").style.display = "block";
+    return; // nothing to render without data
+  }
+
+  document.getElementById("stat-total").textContent = stats.total_queries;
+  document.getElementById("stat-blocked").textContent = stats.blocked;
+  document.getElementById("stat-alerted").textContent = stats.alerted;
+  document.getElementById("stat-monitored").textContent = stats.monitored;
+  document.getElementById("stat-allowed").textContent = stats.allowed;
+  document.getElementById("stat-indicators").textContent = stats.threat_indicators;
+  document.getElementById("stat-latency").textContent = `${stats.avg_latency_ms} ms`;
+  document.getElementById("stat-open-alerts").textContent = stats.open_alerts;
+
+  const recentBody = document.getElementById("recentQueriesBody");
+  recentBody.innerHTML = recent.length === 0
+    ? `<tr><td colspan="5" class="empty-state">No DNS queries yet. Try the analyzer tab.</td></tr>`
+    : recent.map((r) => `
+        <tr>
+          <td>${new Date(r.timestamp).toLocaleTimeString()}</td>
+          <td>${r.domain}</td>
+          <td>${r.client_ip}</td>
+          <td>${actionBadge(r.action)}</td>
+          <td>${r.risk_score.toFixed(1)}</td>
+        </tr>`).join("");
+
+  const topBody = document.getElementById("topDomainsBody");
+  topBody.innerHTML = topDomains.length === 0
+    ? `<tr><td colspan="2" class="empty-state">No blocked domains yet.</td></tr>`
+    : topDomains.map((r) => `<tr><td>${r.domain}</td><td>${r.block_count}</td></tr>`).join("");
+
+  document.getElementById("timelineEmpty").style.display = timeline.length === 0 ? "block" : "none";
+
+  // Charts are rendered last and wrapped separately -- if Chart.js
+  // failed to load (e.g. blocked by an extension), the stats and
+  // tables above still render correctly; only the charts are skipped.
+  if (typeof Chart === "undefined") {
+    console.warn("Chart.js did not load -- skipping chart rendering. Stats and tables still work.");
+    return;
+  }
+
+  try {
     if (donutChartInstance) donutChartInstance.destroy();
     donutChartInstance = new Chart(document.getElementById("actionDonut"), {
       type: "doughnut",
@@ -195,8 +237,6 @@ async function refreshDashboard() {
       options: { responsive: true, plugins: { legend: { position: "bottom", labels: { color: "#e5e7eb" } } } },
     });
 
-    const timeline = await fetchJSON("/api/stats/timeline?hours=24");
-    document.getElementById("timelineEmpty").style.display = timeline.length === 0 ? "block" : "none";
     if (timeline.length > 0) {
       if (timelineChartInstance) timelineChartInstance.destroy();
       const labels = timeline.map((d) => d.time.split(" ")[1] || d.time);
@@ -222,29 +262,8 @@ async function refreshDashboard() {
         },
       });
     }
-
-    const recent = await fetchJSON("/api/dns/history?limit=25");
-    const recentBody = document.getElementById("recentQueriesBody");
-    recentBody.innerHTML = recent.length === 0
-      ? `<tr><td colspan="5" class="empty-state">No DNS queries yet. Try the analyzer tab.</td></tr>`
-      : recent.map((r) => `
-          <tr>
-            <td>${new Date(r.timestamp).toLocaleTimeString()}</td>
-            <td>${r.domain}</td>
-            <td>${r.client_ip}</td>
-            <td>${actionBadge(r.action)}</td>
-            <td>${r.risk_score.toFixed(1)}</td>
-          </tr>`).join("");
-
-    const topDomains = await fetchJSON("/api/stats/top-domains?limit=8");
-    const topBody = document.getElementById("topDomainsBody");
-    topBody.innerHTML = topDomains.length === 0
-      ? `<tr><td colspan="2" class="empty-state">No blocked domains yet.</td></tr>`
-      : topDomains.map((r) => `<tr><td>${r.domain}</td><td>${r.block_count}</td></tr>`).join("");
-
-    document.getElementById("dashApiWarning").style.display = "none";
   } catch (err) {
-    document.getElementById("dashApiWarning").style.display = "block";
+    console.warn("Chart rendering failed, but stats and tables above are still live:", err);
   }
 }
 
